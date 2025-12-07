@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Documentos PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .card h2 {
+            color: #2d3748;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            width: 100%;
+            justify-content: center;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            padding: 16px 24px;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 12px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .checklist-selector {
+            margin-bottom: 20px;
+        }
+
+        .checklist-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            background: white;
+        }
+
+        .checklist-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .checklist-item {
+            background: #f7fafc;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .checklist-item span {
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .checklist-item .number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .upload-zone {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 60px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #667eea;
+            background: #edf2f7;
+            transform: scale(1.02);
+        }
+
+        .upload-zone h3 {
+            color: #2d3748;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-zone p {
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .pdf-list {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .pdf-item {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 80px 1fr auto;
+            gap: 15px;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .pdf-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .pdf-item.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .pdf-preview {
+            width: 80px;
+            height: 100px;
+            background: #f7fafc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .pdf-preview canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .pdf-info {
+            flex: 1;
+        }
+
+        .pdf-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+            word-break: break-word;
+        }
+
+        .pdf-type {
+            padding: 4px 12px;
+            background: #e2e8f0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #4a5568;
+            display: inline-block;
+        }
+
+        .pdf-type.assigned {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        select.doc-type-selector {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            background: white;
+            min-width: 200px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #2d3748;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #38a169;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Organizador de Documentos PDF</h1>
+            <p class="subtitle">Organize e renomeie seus documentos de forma profissional</p>
+        </header>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="main-grid">
+            <!-- Sidebar - Checklist Management -->
+            <div class="card">
+                <h2>📝 Gerenciar Checklists</h2>
+                
+                <div class="checklist-selector">
+                    <select id="checklistSelect" onchange="loadChecklist()">
+                        <option value="">Selecione uma checklist...</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="openNewChecklistModal()">
+                    ➕ Nova Checklist
+                </button>
+
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="openEditChecklistModal()" id="editChecklistBtn" disabled>
+                    ✏️ Editar Checklist
+                </button>
+
+                <div id="currentChecklistItems" class="checklist-items"></div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="statFiles">0</div>
+                        <div class="stat-label">Arquivos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statAssigned">0</div>
+                        <div class="stat-label">Atribuídos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statReady">0%</div>
+                        <div class="stat-label">Completo</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content - PDF Upload and Organization -->
+            <div class="card">
+                <h2>📂 Seus Documentos PDF</h2>
+                
+                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <h3>🔼 Arraste seus PDFs aqui</h3>
+                    <p>ou clique para selecionar arquivos</p>
+                    <input type="file" id="fileInput" accept=".pdf" multiple style="display: none;" onchange="handleFiles(this.files)">
+                </div>
+
+                <div id="pdfList" class="pdf-list"></div>
+
+                <div id="emptyState" class="empty-state">
+                    <div class="empty-state-icon">📄</div>
+                    <p>Nenhum arquivo carregado ainda</p>
+                </div>
+
+                <button class="btn btn-success" onclick="generateOrganizedFiles()" id="generateBtn" disabled>
+                    🚀 Gerar Arquivos Organizados
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for New Checklist -->
+    <div class="modal" id="newChecklistModal">
+        <div class="modal-content">
+            <h2>📝 Nova Checklist</h2>
+            <input type="text" id="newChecklistName" placeholder="Nome da checklist (ex: Abertura de Empresa)">
+            <textarea id="newChecklistItems" placeholder="Digite os documentos (um por linha)&#10;&#10;Exemplo:&#10;Contrato Social&#10;RG do Sócio 1&#10;CPF do Sócio 1&#10;Comprovante de Residência&#10;Certidão Negativa"></textarea>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="saveNewChecklist()">Salvar</button>
+                <button class="btn btn-secondary" onclick="closeModal('newChecklistModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Edit Checklist -->
+    <div class="modal" id="editChecklistModal">
+        <div class="modal-content">
+            <h2>✏️ Editar Checklist</h2>
+            <input type="text" id="editChecklistName" placeholder="Nome da checklist">
+            <textarea id="editChecklistItems" placeholder="Digite os documentos (um por linha)"></textarea>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="saveEditChecklist()">Salvar</button>
+                <button class="btn btn-secondary" onclick="closeModal('editChecklistModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Global state
+        let checklists = JSON.parse(localStorage.getItem('checklists') || '{}');
+        let currentChecklist = null;
+        let uploadedFiles = [];
+        let fileAssignments = {};
+
+        // Initialize
+        function init() {
+            loadChecklistOptions();
+            setupDragAndDrop();
+            
+            // Load sample checklist if none exists
+            if (Object.keys(checklists).length === 0) {
+                createSampleChecklists();
+            }
+        }
+
+        function createSampleChecklists() {
+            checklists = {
+                'Abertura de Empresa': [
+                    'Contrato Social',
+                    'RG do Sócio 1',
+                    'CPF do Sócio 1',
+                    'RG do Sócio 2',
+                    'CPF do Sócio 2',
+                    'Comprovante de Residência',
+                    'Certidão Negativa',
+                    'IPTU do Imóvel'
+                ],
+                'Admissão de Funcionário': [
+                    'Carteira de Trabalho',
+                    'RG',
+                    'CPF',
+                    'Título de Eleitor',
+                    'Comprovante de Residência',
+                    'Certificado de Escolaridade',
+                    'Certidão de Nascimento dos Filhos',
+                    'Cartão de Vacina dos Filhos'
+                ]
+            };
+            saveChecklists();
+            loadChecklistOptions();
+        }
+
+        function saveChecklists() {
+            localStorage.setItem('checklists', JSON.stringify(checklists));
+        }
+
+        function loadChecklistOptions() {
+            const select = document.getElementById('checklistSelect');
+            select.innerHTML = '<option value="">Selecione uma checklist...</option>';
+            
+            Object.keys(checklists).forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+        }
+
+        function loadChecklist() {
+            const select = document.getElementById('checklistSelect');
+            const checklistName = select.value;
+            
+            if (!checklistName) {
+                currentChecklist = null;
+                document.getElementById('currentChecklistItems').innerHTML = '';
+                document.getElementById('editChecklistBtn').disabled = true;
+                return;
+            }
+
+            currentChecklist = checklistName;
+            document.getElementById('editChecklistBtn').disabled = false;
+            
+            const items = checklists[checklistName];
+            const container = document.getElementById('currentChecklistItems');
+            container.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'checklist-item';
+                div.innerHTML = `
+                    <span>${item}</span>
+                    <div class="number">${String(index + 1).padStart(3, '0')}</div>
+                `;
+                container.appendChild(div);
+            });
+
+            updatePdfListSelectors();
+            updateStats();
+        }
+
+        function openNewChecklistModal() {
+            document.getElementById('newChecklistName').value = '';
+            document.getElementById('newChecklistItems').value = '';
+            document.getElementById('newChecklistModal').classList.add('active');
+        }
+
+        function openEditChecklistModal() {
+            if (!currentChecklist) return;
+            
+            document.getElementById('editChecklistName').value = currentChecklist;
+            document.getElementById('editChecklistItems').value = checklists[currentChecklist].join('\n');
+            document.getElementById('editChecklistModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function saveNewChecklist() {
+            const name = document.getElementById('newChecklistName').value.trim();
+            const itemsText = document.getElementById('newChecklistItems').value.trim();
+            
+            if (!name || !itemsText) {
+                showAlert('Por favor, preencha todos os campos', 'error');
+                return;
+            }
+
+            const items = itemsText.split('\n').map(i => i.trim()).filter(i => i);
+            
+            if (items.length === 0) {
+                showAlert('Adicione pelo menos um documento', 'error');
+                return;
+            }
+
+            checklists[name] = items;
+            saveChecklists();
+            loadChecklistOptions();
+            closeModal('newChecklistModal');
+            
+            document.getElementById('checklistSelect').value = name;
+            loadChecklist();
+            
+            showAlert('Checklist criada com sucesso!', 'success');
+        }
+
+        function saveEditChecklist() {
+            const oldName = currentChecklist;
+            const newName = document.getElementById('editChecklistName').value.trim();
+            const itemsText = document.getElementById('editChecklistItems').value.trim();
+            
+            if (!newName || !itemsText) {
+                showAlert('Por favor, preencha todos os campos', 'error');
+                return;
+            }
+
+            const items = itemsText.split('\n').map(i => i.trim()).filter(i => i);
+            
+            if (items.length === 0) {
+                showAlert('Adicione pelo menos um documento', 'error');
+                return;
+            }
+
+            if (oldName !== newName) {
+                delete checklists[oldName];
+            }
+            
+            checklists[newName] = items;
+            saveChecklists();
+            loadChecklistOptions();
+            closeModal('editChecklistModal');
+            
+            document.getElementById('checklistSelect').value = newName;
+            loadChecklist();
+            
+            showAlert('Checklist atualizada com sucesso!', 'success');
+        }
+
+        function setupDragAndDrop() {
+            const zone = document.getElementById('uploadZone');
+            
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        async function handleFiles(files) {
+            const pdfFiles = Array.from(files).filter(f => f.type === 'application/pdf');
+            
+            if (pdfFiles.length === 0) {
+                showAlert('Por favor, selecione apenas arquivos PDF', 'error');
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+
+            for (let i = 0; i < pdfFiles.length; i++) {
+                const file = pdfFiles[i];
+
+                const fileData = {
+                    id: Date.now() + '_' + i,
+                    file: file,
+                    name: file.name,
+                    preview: await generatePreview(file)
+                };
+
+                uploadedFiles.push(fileData);
+                addPdfToList(fileData);
+            }
+
+            updateStats();
+            updateGenerateButton();
+        }
+
+        async function generatePreview(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdf.getPage(1);
+                
+                const viewport = page.getViewport({ scale: 0.3 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+                
+                return canvas;
+            } catch (error) {
+                console.error('Error generating preview:', error);
+                return null;
+            }
+        }
+
+        function addPdfToList(fileData) {
+            const list = document.getElementById('pdfList');
+            
+            const div = document.createElement('div');
+            div.className = 'pdf-item';
+            div.dataset.id = fileData.id;
+            
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'pdf-preview';
+            if (fileData.preview) {
+                previewDiv.appendChild(fileData.preview);
+            } else {
+                previewDiv.innerHTML = '📄';
+            }
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'pdf-info';
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'pdf-name';
+            nameDiv.textContent = fileData.name;
+            
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'pdf-type';
+            typeSpan.textContent = 'Não atribuído';
+            
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(typeSpan);
+            
+            const selectorDiv = document.createElement('div');
+            const select = createDocTypeSelector(fileData.id);
+            selectorDiv.appendChild(select);
+            
+            div.appendChild(previewDiv);
+            div.appendChild(infoDiv);
+            div.appendChild(selectorDiv);
+            
+            list.appendChild(div);
+        }
+
+        function createDocTypeSelector(fileId) {
+            const select = document.createElement('select');
+            select.className = 'doc-type-selector';
+            select.onchange = () => assignDocType(fileId, select.value);
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Selecionar tipo...';
+            select.appendChild(defaultOption);
+            
+            if (currentChecklist && checklists[currentChecklist]) {
+                checklists[currentChecklist].forEach((item, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${String(index + 1).padStart(3, '0')} - ${item}`;
+                    select.appendChild(option);
+                });
+            }
+            
+            return select;
+        }
+
+        function updatePdfListSelectors() {
+            const items = document.querySelectorAll('.pdf-item');
+            items.forEach(item => {
+                const fileId = item.dataset.id;
+                const select = item.querySelector('select');
+                const oldValue = select.value;
+                
+                select.innerHTML = '';
+                
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Selecionar tipo...';
+                select.appendChild(defaultOption);
+                
+                if (currentChecklist && checklists[currentChecklist]) {
+                    checklists[currentChecklist].forEach((docItem, index) => {
+                        const option = document.createElement('option');
+                        option.value = index;
+                        option.textContent = `${String(index + 1).padStart(3, '0')} - ${docItem}`;
+                        select.appendChild(option);
+                    });
+                }
+                
+                if (fileAssignments[fileId] !== undefined) {
+                    select.value = fileAssignments[fileId];
+                }
+            });
+        }
+
+        function assignDocType(fileId, docIndex) {
+            if (docIndex === '') {
+                delete fileAssignments[fileId];
+            } else {
+                fileAssignments[fileId] = docIndex;
+            }
+            
+            const item = document.querySelector(`[data-id="${fileId}"]`);
+            const typeSpan = item.querySelector('.pdf-type');
+            
+            if (docIndex === '') {
+                typeSpan.textContent = 'Não atribuído';
+                typeSpan.className = 'pdf-type';
+                item.classList.remove('selected');
+            } else {
+                const docName = checklists[currentChecklist][docIndex];
+                typeSpan.textContent = `${String(parseInt(docIndex) + 1).padStart(3, '0')} - ${docName}`;
+                typeSpan.className = 'pdf-type assigned';
+                item.classList.add('selected');
+            }
+            
+            updateStats();
+            updateGenerateButton();
+        }
+
+        function updateStats() {
+            document.getElementById('statFiles').textContent = uploadedFiles.length;
+            
+            const assignedCount = Object.keys(fileAssignments).length;
+            document.getElementById('statAssigned').textContent = assignedCount;
+            
+            const percentage = uploadedFiles.length > 0 
+                ? Math.round((assignedCount / uploadedFiles.length) * 100) 
+                : 0;
+            document.getElementById('statReady').textContent = percentage + '%';
+        }
+
+        function updateGenerateButton() {
+            const btn = document.getElementById('generateBtn');
+            const hasFiles = uploadedFiles.length > 0;
+            const hasChecklist = currentChecklist !== null;
+            const allAssigned = uploadedFiles.length > 0 && Object.keys(fileAssignments).length === uploadedFiles.length;
+            
+            btn.disabled = !(hasFiles && hasChecklist && allAssigned);
+        }
+
+        async function generateOrganizedFiles() {
+            if (!currentChecklist) {
+                showAlert('Selecione uma checklist primeiro', 'error');
+                return;
+            }
+
+            const assignedCount = Object.keys(fileAssignments).length;
+            if (assignedCount !== uploadedFiles.length) {
+                showAlert('Atribua todos os arquivos antes de gerar', 'error');
+                return;
+            }
+
+            showAlert('Gerando arquivos organizados...', 'success');
+
+            const zip = new JSZip();
+            const folder = zip.folder(currentChecklist);
+
+            for (const fileData of uploadedFiles) {
+                const assignment = fileAssignments[fileData.id];
+                if (assignment !== undefined) {
+                    const docName = checklists[currentChecklist][assignment];
+                    const number = String(parseInt(assignment) + 1).padStart(3, '0');
+                    const fileName = `${number}_${sanitizeFileName(docName)}.pdf`;
+                    
+                    folder.file(fileName, fileData.file);
+                }
+            }
+
+            const blob = await zip.generateAsync({ type: 'blob' });
+            saveAs(blob, `${currentChecklist}_Organizado.zip`);
+
+            showAlert('Arquivos organizados gerados com sucesso! 🎉', 'success');
+        }
+
+        function sanitizeFileName(name) {
+            return name
+                .replace(/[^a-zA-Z0-9áéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ\s-]/g, '')
+                .replace(/\s+/g, '_')
+                .substring(0, 100);
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} show`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>
